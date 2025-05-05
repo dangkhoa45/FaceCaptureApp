@@ -76,6 +76,12 @@ export default function FaceCaptureApp() {
   const testStreamRef = useRef<MediaStream | null>(null);
   const { toast } = useToast();
 
+  useEffect(() => {
+    const timestamp = new Date().getTime();
+    const paddedId = timestamp.toString().slice(-7);
+    setCaptureSetId(paddedId);
+  }, []);
+
   const fetchNextId = async () => {
     try {
       const res = await fetch("/api/next-id");
