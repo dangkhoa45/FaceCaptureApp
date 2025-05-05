@@ -1,6 +1,13 @@
+import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 import { NextResponse } from "next/server";
 import path from "path";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+  api_key: process.env.CLOUDINARY_API_KEY!,
+  api_secret: process.env.CLOUDINARY_API_SECRET!,
+});
 
 export async function GET() {
   const baseDir = path.join(process.cwd(), "public/employee_images");
@@ -44,46 +51,32 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { images, step, employeeId } = body;
+    const { employeeId, images, step } = body;
 
-    if (
-      !images ||
-      !Array.isArray(images) ||
-      images.length === 0 ||
-      !employeeId
-    ) {
+    if (!employeeId || !images || !Array.isArray(images)) {
       return NextResponse.json(
-        { error: "Missing images or employeeId" },
+        { error: "Thiếu dữ liệu upload" },
         { status: 400 }
       );
     }
 
-    const employeeDir = path.join(
-      process.cwd(),
-      "public/employee_images",
-      employeeId
+    const uploadedUrls = await Promise.all(
+      images.map((base64: string, index: number) =>
+        cloudinary.uploader.upload(base64, {
+          folder: `face-captures/${employeeId}`,
+          public_id: step?.[index] || `step_${index + 1}`,
+        })
+      )
     );
 
-    if (!fs.existsSync(employeeDir)) {
-      fs.mkdirSync(employeeDir, { recursive: true });
-    }
-
-    images.forEach((image: string, index: number) => {
-      const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-
-      const stepName = Array.isArray(step) ? step[index] : `step_${index + 1}`;
-      const filePath = path.join(employeeDir, `${stepName}.jpg`);
-
-      fs.writeFileSync(filePath, base64Data, "base64");
-    });
-
     return NextResponse.json({
-      message: `Images for ${employeeId} uploaded successfully.`,
+      message: "Upload thành công",
+      urls: uploadedUrls.map((r) => r.secure_url),
     });
-  } catch (error) {
-    console.error("Upload error:", error);
+  } catch (err) {
+    console.error("Upload error:", err);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Lỗi khi upload Cloudinary" },
       { status: 500 }
     );
   }

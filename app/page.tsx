@@ -262,6 +262,52 @@ export default function FaceCaptureApp() {
     setShowTestDialog(true);
   };
 
+  // const uploadAllImages = async (imagesToUpload?: Record<string, string>) => {
+  //   setIsUploading(true);
+
+  //   try {
+  //     const allImages = imagesToUpload || capturedImages;
+
+  //     const imageKeys = Object.keys(allImages);
+  //     const images: string[] = imageKeys.map((key) => allImages[key]);
+  //     const step: string[] = imageKeys;
+
+  //     const employeeId = `HR-EMP-${captureSetId}`;
+
+  //     const response = await fetch("/api/upload", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ employeeId, images, step }),
+  //     });
+
+  //     const result = await response.json();
+
+  //     if (response.ok) {
+  //       toast({
+  //         title: "Tải lên thành công",
+  //         description: `Đã lưu ảnh cho ${employeeId}`,
+  //       });
+
+  //       setCapturedImages({});
+  //       setActiveAngle(CAPTURE_ANGLES[0].id);
+  //       setIsComplete(false);
+
+  //       await fetchNextId();
+  //     } else {
+  //       throw new Error(result.error || "Upload failed");
+  //     }
+  //   } catch (error) {
+  //     console.error(error);
+  //     toast({
+  //       title: "Lỗi khi tải lên",
+  //       description: "Đã xảy ra lỗi khi lưu ảnh. Vui lòng thử lại.",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setIsUploading(false);
+  //   }
+  // };
+
   const uploadAllImages = async (imagesToUpload?: Record<string, string>) => {
     setIsUploading(true);
 
@@ -284,23 +330,29 @@ export default function FaceCaptureApp() {
 
       if (response.ok) {
         toast({
-          title: "Tải lên thành công",
+          title: "Tải lên Cloudinary thành công",
           description: `Đã lưu ảnh cho ${employeeId}`,
         });
 
+        // Reset sau khi thành công
         setCapturedImages({});
         setActiveAngle(CAPTURE_ANGLES[0].id);
         setIsComplete(false);
 
-        await fetchNextId();
+        const storedIndex = localStorage.getItem("captureIndex");
+        let nextIndex = storedIndex ? parseInt(storedIndex, 10) + 1 : 1;
+        localStorage.setItem("captureIndex", nextIndex.toString());
+
+        const paddedId = nextIndex.toString().padStart(7, "0");
+        setCaptureSetId(paddedId);
       } else {
         throw new Error(result.error || "Upload failed");
       }
     } catch (error) {
       console.error(error);
       toast({
-        title: "Lỗi khi tải lên",
-        description: "Đã xảy ra lỗi khi lưu ảnh. Vui lòng thử lại.",
+        title: "Lỗi khi upload",
+        description: "Không thể upload ảnh lên Cloudinary.",
         variant: "destructive",
       });
     } finally {
