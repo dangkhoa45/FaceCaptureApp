@@ -289,6 +289,7 @@ export default function FaceCaptureApp() {
         setCapturedImages({});
         setActiveAngle(CAPTURE_ANGLES[0].id);
         setIsComplete(false);
+        fetchNextId();
       } else {
         throw new Error(result.error || "Upload failed");
       }
