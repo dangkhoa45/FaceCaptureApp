@@ -373,7 +373,7 @@ export default function FaceCaptureApp() {
           <div className="flex items-center mb-4 md:mb-0">
             <div className="w-40 mr-4">
               <Image
-                src="/images/logo-vacif.png"
+                src="/images/logo-vacif-removebg.png"
                 alt="VaciF - Focusing On Value"
                 width={160}
                 height={60}
