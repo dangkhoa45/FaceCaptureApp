@@ -1,5 +1,4 @@
 "use client";
-
 import FaceList from "@/components/FaceList";
 
 function PreviewPage() {
