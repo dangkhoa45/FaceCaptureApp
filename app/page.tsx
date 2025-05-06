@@ -76,12 +76,6 @@ export default function FaceCaptureApp() {
   const testStreamRef = useRef<MediaStream | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const timestamp = new Date().getTime();
-    const paddedId = timestamp.toString().slice(-7);
-    setCaptureSetId(paddedId);
-  }, []);
-
   const fetchNextId = async () => {
     try {
       const res = await fetch("/api/next-id");
@@ -99,9 +93,6 @@ export default function FaceCaptureApp() {
 
   useEffect(() => {
     fetchNextId();
-  }, []);
-
-  useEffect(() => {
     startCamera();
 
     return () => {
@@ -262,68 +253,29 @@ export default function FaceCaptureApp() {
     setShowTestDialog(true);
   };
 
-  // const uploadAllImages = async (imagesToUpload?: Record<string, string>) => {
-  //   setIsUploading(true);
-
-  //   try {
-  //     const allImages = imagesToUpload || capturedImages;
-
-  //     const imageKeys = Object.keys(allImages);
-  //     const images: string[] = imageKeys.map((key) => allImages[key]);
-  //     const step: string[] = imageKeys;
-
-  //     const employeeId = `HR-EMP-${captureSetId}`;
-
-  //     const response = await fetch("/api/upload", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({ employeeId, images, step }),
-  //     });
-
-  //     const result = await response.json();
-
-  //     if (response.ok) {
-  //       toast({
-  //         title: "Tải lên thành công",
-  //         description: `Đã lưu ảnh cho ${employeeId}`,
-  //       });
-
-  //       setCapturedImages({});
-  //       setActiveAngle(CAPTURE_ANGLES[0].id);
-  //       setIsComplete(false);
-
-  //       await fetchNextId();
-  //     } else {
-  //       throw new Error(result.error || "Upload failed");
-  //     }
-  //   } catch (error) {
-  //     console.error(error);
-  //     toast({
-  //       title: "Lỗi khi tải lên",
-  //       description: "Đã xảy ra lỗi khi lưu ảnh. Vui lòng thử lại.",
-  //       variant: "destructive",
-  //     });
-  //   } finally {
-  //     setIsUploading(false);
-  //   }
-  // };
-
   const uploadAllImages = async (imagesToUpload?: Record<string, string>) => {
     setIsUploading(true);
 
     try {
+      const res = await fetch("/api/next-id");
+      const data = await res.json();
+      if (!res.ok || !data?.id) {
+        throw new Error("Không thể lấy ID từ Cloudinary");
+      }
+
+      const newEmployeeId = data.id;
+      setCaptureSetId(newEmployeeId.replace("HR-EMP-", ""));
+
       const allImages = imagesToUpload || capturedImages;
 
       const imageKeys = Object.keys(allImages);
       const images: string[] = imageKeys.map((key) => allImages[key]);
       const step: string[] = imageKeys;
 
-      const employeeId = `HR-EMP-${captureSetId}`;
-
       const response = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeId, images, step }),
+        body: JSON.stringify({ employeeId: newEmployeeId, images, step }),
       });
 
       const result = await response.json();
@@ -331,25 +283,17 @@ export default function FaceCaptureApp() {
       if (response.ok) {
         toast({
           title: "Tải lên Cloudinary thành công",
-          description: `Đã lưu ảnh cho ${employeeId}`,
+          description: `Đã lưu ảnh cho ${newEmployeeId}`,
         });
 
-        // Reset sau khi thành công
         setCapturedImages({});
         setActiveAngle(CAPTURE_ANGLES[0].id);
         setIsComplete(false);
-
-        const storedIndex = localStorage.getItem("captureIndex");
-        let nextIndex = storedIndex ? parseInt(storedIndex, 10) + 1 : 1;
-        localStorage.setItem("captureIndex", nextIndex.toString());
-
-        const paddedId = nextIndex.toString().padStart(7, "0");
-        setCaptureSetId(paddedId);
       } else {
         throw new Error(result.error || "Upload failed");
       }
     } catch (error) {
-      console.error(error);
+      console.error("Upload error:", error);
       toast({
         title: "Lỗi khi upload",
         description: "Không thể upload ảnh lên Cloudinary.",
