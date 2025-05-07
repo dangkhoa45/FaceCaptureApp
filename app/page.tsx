@@ -165,15 +165,44 @@ export default function FaceCaptureApp() {
     }
   };
 
+  const uploadImage = async (blob: Blob): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append("file", blob, "image.jpg");
+    formData.append("is_private", "1");
+
+    try {
+      const response = await fetch(
+        "https://dev4.tadalabs.vn/api/method/upload_file",
+        {
+          method: "POST",
+          headers: {
+            Authorization: "token a6b73e5e5d8b4f4:87aaa4e073c8b9f",
+          },
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok && result.message && result.message.file_url) {
+        return result.message.file_url;
+      } else {
+        throw new Error(result.message || "Upload failed");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast({
+        title: "Lỗi khi upload",
+        description: "Không thể upload ảnh lên server.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   const captureImage = (angleId: string) => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
-
-    const hasFace = Math.random() > 0.2;
-    if (!hasFace) {
-      setFeedbackMessage("Không tìm thấy khuôn mặt. Vui lòng thử lại.");
-      return;
-    }
 
     const canvas = document.createElement("canvas");
     canvas.width = videoElement.videoWidth;
@@ -182,34 +211,39 @@ export default function FaceCaptureApp() {
 
     if (ctx) {
       ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-      const imageDataUrl = canvas.toDataURL("image/jpeg");
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          const fileUrl = await uploadImage(blob);
+          if (fileUrl) {
+            setCapturedImages((prev) => ({
+              ...prev,
+              [angleId]: fileUrl,
+            }));
 
-      setCapturedImages((prev) => ({
-        ...prev,
-        [angleId]: imageDataUrl,
-      }));
+            const currentIndex = CAPTURE_ANGLES.findIndex(
+              (angle) => angle.id === angleId
+            );
+            if (currentIndex < CAPTURE_ANGLES.length - 1) {
+              setActiveAngle(CAPTURE_ANGLES[currentIndex + 1].id);
+            }
 
-      const currentIndex = CAPTURE_ANGLES.findIndex(
-        (angle) => angle.id === angleId
-      );
-      if (currentIndex < CAPTURE_ANGLES.length - 1) {
-        setActiveAngle(CAPTURE_ANGLES[currentIndex + 1].id);
-      }
+            setFeedbackMessage("Đã chụp và upload ảnh thành công!");
 
-      setFeedbackMessage("Đã chụp ảnh thành công!");
+            const updatedImages = {
+              ...capturedImages,
+              [angleId]: fileUrl,
+            };
+            const capturedCount = Object.keys(updatedImages).length;
 
-      const updatedImages = { ...capturedImages, [angleId]: imageDataUrl };
-      const capturedCount = Object.keys(updatedImages).length;
-
-      if (capturedCount === CAPTURE_ANGLES.length) {
-        setIsComplete(true);
-      }
-
-      if (angleId === "down") {
-        setTimeout(() => {
-          setShowTestDialog(true);
-        }, 500);
-      }
+            if (capturedCount === CAPTURE_ANGLES.length) {
+              setIsComplete(true);
+              setTimeout(() => {
+                setShowTestDialog(true);
+              }, 500);
+            }
+          }
+        }
+      }, "image/jpeg");
     }
   };
 
@@ -224,16 +258,21 @@ export default function FaceCaptureApp() {
 
     if (ctx) {
       ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-      const imageDataUrl = canvas.toDataURL("image/jpeg");
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          const fileUrl = await uploadImage(blob);
+          if (fileUrl) {
+            const updated = {
+              ...capturedImages,
+              [TEST_ANGLE.id]: fileUrl,
+            };
 
-      const updated = {
-        ...capturedImages,
-        [TEST_ANGLE.id]: imageDataUrl,
-      };
-
-      setCapturedImages(updated);
-      setShowTestDialog(false);
-      uploadAllImages(updated);
+            setCapturedImages(updated);
+            setShowTestDialog(false);
+            uploadEmployeeData(updated);
+          }
+        }
+      }, "image/jpeg");
     }
   };
 
@@ -248,50 +287,58 @@ export default function FaceCaptureApp() {
 
     setIsComplete(false);
   };
-
   const showTestCaptureDialog = () => {
     setShowTestDialog(true);
   };
 
-  const uploadAllImages = async (imagesToUpload?: Record<string, string>) => {
+  const uploadEmployeeData = async (images: Record<string, string>) => {
     setIsUploading(true);
+    const angleOrder = ["straight", "left", "right", "top", "bottom", "test"];
+    const employeeData: Record<string, string> = {
+      first_name: "nhân viên 1",
+      gender: "Male",
+      date_of_joining: "2025-01-01",
+      date_of_birth: "2003-06-20",
+    };
+
+    angleOrder.forEach((angle, index) => {
+      const fileUrl = images[angle];
+      if (fileUrl) {
+        employeeData[`custom_face_images${index + 1}`] = fileUrl;
+      }
+    });
 
     try {
-      const currentId = `HR-EMP-${captureSetId.padStart(5, "0")}`;
-
-      const allImages = imagesToUpload || capturedImages;
-
-      const imageKeys = Object.keys(allImages);
-      const images: string[] = imageKeys.map((key) => allImages[key]);
-      const step: string[] = imageKeys;
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeId: currentId, images, step }),
-      });
+      const response = await fetch(
+        "https://dev4.tadalabs.vn/api/resource/Employee",
+        {
+          method: "POST",
+          headers: {
+            Authorization: "token a6b73e5e5d8b4f4:87aaa4e073c8b9f",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(employeeData),
+        }
+      );
 
       const result = await response.json();
 
       if (response.ok) {
         toast({
-          title: "Tải lên Cloudinary thành công",
-          description: `Đã lưu ảnh cho ${currentId}`,
+          title: "Thành công",
+          description: "Đã tạo nhân viên mới và lưu ảnh.",
         });
-
         setCapturedImages({});
         setActiveAngle(CAPTURE_ANGLES[0].id);
         setIsComplete(false);
-
-        await fetchNextId();
       } else {
-        throw new Error(result.error || "Upload failed");
+        throw new Error(result.message || "Gửi dữ liệu thất bại");
       }
     } catch (error) {
-      console.error("Upload error:", error);
+      console.error("Upload employee error:", error);
       toast({
-        title: "Lỗi khi upload",
-        description: "Không thể upload ảnh lên Cloudinary.",
+        title: "Lỗi khi gửi dữ liệu nhân viên",
+        description: "Không thể gửi dữ liệu lên hệ thống.",
         variant: "destructive",
       });
     } finally {
@@ -300,10 +347,6 @@ export default function FaceCaptureApp() {
   };
 
   const currentAngle = CAPTURE_ANGLES.find((angle) => angle.id === activeAngle);
-
-  const hasAllBasicAngles = CAPTURE_ANGLES.every(
-    (angle) => angle.id in capturedImages
-  );
 
   return (
     <div className="min-h-screen bg-blue-50 py-4 px-2 md:px-4">
@@ -413,12 +456,10 @@ export default function FaceCaptureApp() {
             </Card>
           </div>
 
-          {/* Khu vực hiển thị các góc chụp */}
-          <Card className="overflow-hidden border-blue-200">
-            <div className="p-3 border-b bg-blue-100">
-              <h3 className="text-lg font-medium text-blue-800">
-                Các góc chụp
-              </h3>
+          {/* Danh sách ảnh đã chụp */}
+          <Card className="border-blue-200">
+            <div className="p-4 bg-blue-100 border-b">
+              <h3 className="text-lg font-medium text-blue-800">Ảnh đã chụp</h3>
             </div>
             <div className="p-4">
               <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
