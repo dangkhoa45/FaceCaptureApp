@@ -1,4 +1,3 @@
-
 import { v2 as cloudinary } from "cloudinary";
 import { NextResponse } from "next/server";
 
@@ -27,10 +26,18 @@ export async function GET() {
       grouped[employeeId].push({ step, url: res.secure_url });
     });
 
-    const data = Object.entries(grouped).map(([employeeId, urls]) => ({
-      employeeId,
-      urls,
-    }));
+    const ORDER = ["straight", "left", "right", "top", "bottom", "test"];
+
+    const data = Object.entries(grouped).map(([employeeId, urls]) => {
+      const sortedUrls = ORDER.map((step) =>
+        urls.find((u) => u.step === step)
+      ).filter(Boolean);
+
+      return {
+        employeeId,
+        urls: sortedUrls,
+      };
+    });
 
     return NextResponse.json(data);
   } catch (error) {

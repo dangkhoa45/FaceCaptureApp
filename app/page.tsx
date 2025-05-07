@@ -21,16 +21,10 @@ import { useEffect, useRef, useState } from "react";
 
 const CAPTURE_ANGLES = [
   {
-    id: "front",
+    id: "straight",
     name: "Chính diện",
     instruction: "Nhìn thẳng vào camera",
     image: "/images/face_angle_1.png",
-  },
-  {
-    id: "right",
-    name: "Phải",
-    instruction: "Xoay mặt sang phải",
-    image: "/images/face_angle_3.png",
   },
   {
     id: "left",
@@ -39,13 +33,19 @@ const CAPTURE_ANGLES = [
     image: "/images/face_angle_4.png",
   },
   {
-    id: "up",
+    id: "right",
+    name: "Phải",
+    instruction: "Xoay mặt sang phải",
+    image: "/images/face_angle_3.png",
+  },
+  {
+    id: "top",
     name: "Ngẩng Lên",
     instruction: "Ngẩng đầu lên",
     image: "/images/face_angle_2.png",
   },
   {
-    id: "down",
+    id: "bottom",
     name: "Cúi Xuống",
     instruction: "Cúi đầu xuống",
     image: "/images/face_angle_5.png",
@@ -257,14 +257,7 @@ export default function FaceCaptureApp() {
     setIsUploading(true);
 
     try {
-      const res = await fetch("/api/next-id");
-      const data = await res.json();
-      if (!res.ok || !data?.id) {
-        throw new Error("Không thể lấy ID từ Cloudinary");
-      }
-
-      const newEmployeeId = data.id;
-      setCaptureSetId(newEmployeeId.replace("HR-EMP-", ""));
+      const currentId = `HR-EMP-${captureSetId.padStart(5, "0")}`;
 
       const allImages = imagesToUpload || capturedImages;
 
@@ -275,7 +268,7 @@ export default function FaceCaptureApp() {
       const response = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeId: newEmployeeId, images, step }),
+        body: JSON.stringify({ employeeId: currentId, images, step }),
       });
 
       const result = await response.json();
@@ -283,13 +276,14 @@ export default function FaceCaptureApp() {
       if (response.ok) {
         toast({
           title: "Tải lên Cloudinary thành công",
-          description: `Đã lưu ảnh cho ${newEmployeeId}`,
+          description: `Đã lưu ảnh cho ${currentId}`,
         });
 
         setCapturedImages({});
         setActiveAngle(CAPTURE_ANGLES[0].id);
         setIsComplete(false);
-        fetchNextId();
+
+        await fetchNextId();
       } else {
         throw new Error(result.error || "Upload failed");
       }

@@ -16,14 +16,14 @@ export async function GET() {
       }
     }
 
-    const filtered = folders.filter((name) => /^HR-EMP-\d{7}$/.test(name));
+    const filtered = folders.filter((name) => /^HR-EMP-\d{5}$/.test(name));
 
     const maxId = filtered
       .map((name) => parseInt(name.replace("HR-EMP-", ""), 10))
       .filter(Number.isFinite)
       .reduce((a, b) => Math.max(a, b), 0);
 
-    const nextId = (maxId + 1).toString().padStart(7, "0");
+    const nextId = (maxId + 1).toString().padStart(5, "0");
 
     return NextResponse.json({ id: `HR-EMP-${nextId}` });
   } catch (err) {
