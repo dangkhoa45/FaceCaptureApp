@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { useEmployees } from "@/hooks/useEmployeeList";
+import { getNextIdFromEmployees } from "@/lib/helps";
 import {
   AlertCircle,
   ArrowRight,
@@ -76,23 +78,16 @@ export default function FaceCaptureApp() {
   const testStreamRef = useRef<MediaStream | null>(null);
   const { toast } = useToast();
 
-  const fetchNextId = async () => {
-    try {
-      const res = await fetch("/api/next-id");
-      const data = await res.json();
-      if (res.ok) {
-        const id = data.id.replace("HR-EMP-", "");
-        setCaptureSetId(id);
-      } else {
-        console.error("Failed to get next ID:", data.error);
-      }
-    } catch (error) {
-      console.error("Error fetching next ID:", error);
-    }
-  };
+  const { data: employees, loading: employeesLoading } = useEmployees();
 
   useEffect(() => {
-    fetchNextId();
+    if (!employeesLoading && employees.length > 0) {
+      const maxId = getNextIdFromEmployees(employees);
+      setCaptureSetId(maxId);
+    }
+  }, [employeesLoading, employees]);
+
+  useEffect(() => {
     startCamera();
 
     return () => {
@@ -331,6 +326,12 @@ export default function FaceCaptureApp() {
         setCapturedImages({});
         setActiveAngle(CAPTURE_ANGLES[0].id);
         setIsComplete(false);
+
+        const currentNumber = parseInt(captureSetId.replace("HR-EMP-", ""), 10);
+        const nextNumber = currentNumber + 1;
+        const padded = nextNumber.toString().padStart(5, "0");
+        setCaptureSetId(`HR-EMP-${padded}`);
+        
       } else {
         throw new Error(result.message || "Gửi dữ liệu thất bại");
       }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEmployees } from "@/hooks/employeeList";
+import { useEmployees } from "@/hooks/useEmployeeList";
 
 function EmployeeList() {
   const { data, loading, error } = useEmployees();
