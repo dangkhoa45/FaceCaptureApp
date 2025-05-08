@@ -163,7 +163,7 @@ export default function FaceCaptureApp() {
   const uploadImage = async (blob: Blob): Promise<string | null> => {
     const formData = new FormData();
     formData.append("file", blob, "image.jpg");
-    formData.append("is_private", "1");
+    formData.append("is_private", "0");
 
     try {
       const response = await fetch(
